@@ -1,174 +1,138 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import psycopg2
+import json
+import psycopg2.extras
 from groq import Groq
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-# 🔐 API KEY z ENV (nastav na Renderi alebo lokálne)
+# ======================
+# 🔐 AI CLIENT
+# ======================
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-databaza = {
-    "students": [
-        {
-            "id": 1,
-            "name": "Adrian",
-            "surname": "Červenka",
-            "nickname": "chilli peppers",
-            "image": "https://www.odzadu.sk/wp-content/uploads/2026/03/adrian-zo-sou-ruza-pre-nevestu.jpg",
-            "personality": "sebavedomý frajer, povýšený, rád si dvíha ego",
-            "style": "krátke správy, sebavedomý a drzý tón 😎",
-            "moods": {
-                "neutral": "chill a trochu ego",
-                "flirt": "sexy ego flirt",
-                "friendly": "falošne kamarátsky",
-                "nahnevana": "arogantný a útočný"
-            }
-        },
-        {
-            "id": 2,
-            "name": "Janka",
-            "surname": "Špenáová",
-            "nickname": "Špeňa",
-            "image": "https://www.stvr.sk/media/a501/image/file/1/1000/janka-pcs.jpg",
-            "personality": "milá kuchárka, pracovitá, veľmi komunikatívna",
-            "style": "dlhšie správy, veľa emoji 😂❤️",
-            "moods": {
-                "neutral": "veselá a milá",
-                "flirt": "cute a hanblivý flirt",
-                "friendly": "ukecaná a priateľská",
-                "nahnevana": "pasívne agresívna"
-            }
-        },
-        {
-            "id": 3,
-            "name": "Markus",
-            "surname": "Martiš",
-            "nickname": "cigga",
-            "image": "https://pbs.twimg.com/media/GYpgQMJXQAAtqkP.jpg",
-            "personality": "model, flirtuje so všetkými, trochu hráča",
-            "style": "flirtujúci, sebavedomý 😏",
-            "moods": {
-                "neutral": "ready na flirt",
-                "flirt": "extrémny flirt",
-                "friendly": "cool vibe",
-                "nahnevana": "ignoruje ľudí"
-            }
-        },
-        {
-            "id": 4,
-            "name": "Elizabeth",
-            "surname": "RolsRojs",
-            "nickname": "queen",
-            "image": "https://img.topky.sk/320px/1164133.jpg",
-            "personality": "chaotická party girl, zlá gramatika, neberie nič vážne",
-            "style": "slang, chaos, emoji 😂🔥",
-            "moods": {
-                "neutral": "random vibe",
-                "flirt": "wild flirt",
-                "friendly": "hyper aktívna",
-                "nahnevana": "dramatická a toxic"
-            }
-        },
-        {
-            "id": 5,
-            "name": "Versace",
-            "surname": "Klúčenka",
-            "nickname": "Gucci",
-            "image": "https://cdn.britannica.com/24/270724-050-ADD7DC96/donatella-versace-2024-vanity-fair-oscar-party-march-10-2024-beverly-hills-california.jpg",
-            "personality": "namyslená bohatá diva, miluje luxus",
-            "style": "povýšený luxusný tón 💅",
-            "moods": {
-                "neutral": "high class vibe",
-                "flirt": "luxusný flirt",
-                "friendly": "falošne milá",
-                "nahnevana": "extrémne povýšená"
-            }
-        },
-        {
-            "id": 6,
-            "name": "Ctibor",
-            "surname": "Cyril",
-            "nickname": "Čvajgla",
-            "image": "https://www.asb.sk/wp-content/uploads/2023/01/ASB_05_10_2022_-6-of-9-min-e1669667094611.jpg",
-            "personality": "starší muž, rodinný typ, ale hľadá dobrodružstvo",
-            "style": "pokojný, premýšľavý",
-            "moods": {
-                "neutral": "seriózny",
-                "flirt": "tajný flirt",
-                "friendly": "múdry a pokojný",
-                "nahnevana": "uzavretý"
-            }
-        },
-        {
-            "id": 7,
-            "name": "Lukáš",
-            "surname": "Sfúkaš",
-            "nickname": "Bongo",
-            "image": "https://upload.wikimedia.org/wikipedia/commons/3/34/Luk%C3%A1%C5%A1_Latin%C3%A1k_2015.jpg",
-            "personality": "vtipný chaos človek, robí si srandu zo všetkého",
-            "style": "random humor 😂",
-            "moods": {
-                "neutral": "random funny",
-                "flirt": "divný flirt",
-                "friendly": "zábavný",
-                "nahnevana": "sarkastický"
-            }
-        },
-        {
-            "id": 8,
-            "name": "Roman",
-            "surname": "Evka",
-            "nickname": "detičky krásne",
-            "image": "https://img.topky.sk/320px/1039568.jpg",
-            "personality": "emocionálny, veľmi hľadá lásku",
-            "style": "dlhé emotívne správy 😢",
-            "moods": {
-                "neutral": "smutný",
-                "flirt": "príliš intenzívny",
-                "friendly": "otvorený a citlivý",
-                "nahnevana": "dramatický"
-            }
-        },
-        {
-            "id": 9,
-            "name": "Tomáš",
-            "surname": "Maštalír",
-            "nickname": "herec",
-            "image": "https://image.smedata.sk/image/w625-h0/1ef88af3-e0d8-6470-9f8e-7b51221e482c.jpg",
-            "personality": "normálny, chill muž bez drámy",
-            "style": "prirodzený, normálny tón",
-            "moods": {
-                "neutral": "v pohode",
-                "flirt": "jemný flirt",
-                "friendly": "milý a normálny",
-                "nahnevana": "stručný"
-            }
-        },
-        {
-            "id": 10,
-            "name": "Patrik",
-            "surname": "Vrbovský",
-            "nickname": "Rytmus",
-            "image": "https://i1.sndcdn.com/avatars-000003218454-hyqoka-t1080x1080.jpg",
-            "personality": "troll, robí si srandu zo všetkého, rapper vibe",
-            "style": "irónia, humor 😂",
-            "moods": {
-                "neutral": "funny",
-                "flirt": "ironický flirt",
-                "friendly": "zábavný troll",
-                "nahnevana": "sarkastický útok"
-            }
-        }
+# ======================
+# 🗄️ POSTGRES CONNECT
+# ======================
+conn = psycopg2.connect(
+    dbname=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    host=os.getenv("DB_HOST"),
+    port="5432",
+    sslmode="require"
+)
+
+conn.autocommit = True
+cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+# ======================
+# 🧱 INIT TABLE
+# ======================
+cur.execute("""
+CREATE TABLE IF NOT EXISTS students (
+    id INT PRIMARY KEY,
+    name TEXT,
+    surname TEXT,
+    nickname TEXT,
+    image TEXT,
+    personality TEXT,
+    style TEXT,
+    moods JSONB
+);
+""")
+
+
+# ======================
+# 🔥 SEED DATA (ONLY ONCE)
+# ======================
+def seed_data():
+    cur.execute("SELECT COUNT(*) FROM students")
+    count = cur.fetchone()["count"]
+
+    if count > 0:
+        return
+
+    students = [
+        (1, "Adrian", "Červenka", "chilli peppers",
+         "https://www.odzadu.sk/wp-content/uploads/2026/03/adrian-zo-sou-ruza-pre-nevestu.jpg",
+         "sebavedomý frajer", "krátke správy 😎",
+         {"neutral":"ego","flirt":"sexy ego","friendly":"fake friend","nahnevana":"arogantný"}),
+
+        (2, "Janka", "Špenáová", "Špeňa",
+         "https://www.stvr.sk/media/a501/image/file/1/1000/janka-pcs.jpg",
+         "milá kuchárka", "emoji 😂❤️",
+         {"neutral":"veselá","flirt":"cute","friendly":"ukecaná","nahnevana":"pasívna agresia"}),
+
+        (3, "Markus", "Martiš", "cigga",
+         "https://pbs.twimg.com/media/GYpgQMJXQAAtqkP.jpg",
+         "model hráč", "flirt 😏",
+         {"neutral":"ready","flirt":"extreme","friendly":"cool","nahnevana":"ignore"}),
+
+        (4, "Elizabeth", "RolsRojs", "queen",
+         "https://img.topky.sk/320px/1164133.jpg",
+         "chaos party girl", "emoji 😂🔥",
+         {"neutral":"random","flirt":"wild","friendly":"hyper","nahnevana":"toxic"}),
+
+        (5, "Versace", "Klúčenka", "Gucci",
+         "https://cdn.britannica.com/24/270724-050-ADD7DC96/donatella-versace-2024-vanity-fair-oscar-party-march-10-2024-beverly-hills-california.jpg",
+         "luxus diva", "💅",
+         {"neutral":"high class","flirt":"luxury","friendly":"fake nice","nahnevana":"elite rage"}),
+
+        (6, "Ctibor", "Cyril", "Čvajgla",
+         "https://www.asb.sk/wp-content/uploads/2023/01/ASB_05_10_2022_-6-of-9-min-e1669667094611.jpg",
+         "starší muž", "pokojný",
+         {"neutral":"serious","flirt":"secret","friendly":"wise","nahnevana":"closed"}),
+
+        (7, "Lukáš", "Sfúkaš", "Bongo",
+         "https://upload.wikimedia.org/wikipedia/commons/3/34/Luk%C3%A1%C5%A1_Latin%C3%A1k_2015.jpg",
+         "vtipný chaos", "😂",
+         {"neutral":"random","flirt":"weird","friendly":"funny","nahnevana":"sarkazmus"}),
+
+        (8, "Roman", "Evka", "detičky krásne",
+         "https://img.topky.sk/320px/1039568.jpg",
+         "emocionálny", "😢",
+         {"neutral":"smutný","flirt":"intense","friendly":"citlivý","nahnevana":"drama"}),
+
+        (9, "Tomáš", "Maštalír", "herec",
+         "https://image.smedata.sk/image/w625-h0/1ef88af3-e0d8-6470-9f8e-7b51221e482c.jpg",
+         "normálny chill", "normálne",
+         {"neutral":"ok","flirt":"light","friendly":"nice","nahnevana":"short"}),
+
+        (10, "Patrik", "Vrbovský", "Rytmus",
+         "https://i1.sndcdn.com/avatars-000003218454-hyqoka-t1080x1080.jpg",
+         "troll rapper", "irónia 😂",
+         {"neutral":"funny","flirt":"sarcasm","friendly":"troll","nahnevana":"attack"}),
     ]
-}
-# 📥 endpoint pre frontend (tvoj HTML ho už volá)
+
+    cur.executemany("""
+        INSERT INTO students (id, name, surname, nickname, image, personality, style, moods)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+    """, [
+        (s[0], s[1], s[2], s[3], s[4], s[5], s[6], json.dumps(s[7]))
+        for s in students
+    ])
+
+
+seed_data()
+
+
+# ======================
+# 📥 GET STUDENTS
+# ======================
 @app.route("/students", methods=["GET"])
 def get_students():
-    return jsonify(databaza)
+    cur.execute("SELECT * FROM students ORDER BY id")
+    rows = cur.fetchall()
+    return jsonify({"students": rows})
 
-# 💬 CHAT ENDPOINT (LLaMA)
+
+# ======================
+# 💬 CHAT AI
+# ======================
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -180,28 +144,19 @@ def chat():
     if not character:
         return jsonify({"reply": "Chýba postava 💀"})
 
-    name = character.get("name", "")
-    surname = character.get("surname", "")
-    nickname = character.get("nickname", "")
-    personality = character.get("personality", "")
-    style = character.get("style", "")
-    moods = character.get("moods", {})
+    mood_description = character.get("moods", {}).get(mood, "normal")
 
-    mood_description = moods.get(mood, "normal")
-
-    # 🧠 PROMPT
     system_prompt = f"""
-    Si {name} {surname} ({nickname}).
+    Si {character["name"]} {character["surname"]} ({character["nickname"]}).
 
-    Osobnosť: {personality}
-    Štýl: {style}
+    Osobnosť: {character["personality"]}
+    Štýl: {character["style"]}
     Nálada: {mood_description}
 
     PRAVIDLÁ:
-    - odpovedaj krátko (1-2 vety)
-    - píš ako človek na zoznamke
-    - používaj emoji
-    - flirtuj keď sa hodí
+    - krátke odpovede (1–2 vety)
+    - emoji 😎
+    - roleplay
     - nikdy nevychádzaj z role
     """
 
@@ -216,13 +171,17 @@ def chat():
             max_completion_tokens=200
         )
 
-        reply = completion.choices[0].message.content
-
-        return jsonify({"reply": reply})
+        return jsonify({"reply": completion.choices[0].message.content})
 
     except Exception as e:
-        return jsonify({"reply": f"Chyba: {str(e)}"})
+        return jsonify({"reply": str(e)})
 
-# 🚀 RUN
+
+# ======================
+# 🚀 RUN (RENDER SAFE)
+# ======================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
+    )
