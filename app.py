@@ -157,12 +157,6 @@ def get_students():
     cur.execute("SELECT * FROM students")
     rows = cur.fetchall()
 
-    # Dynamické dogenerovanie veku pre každého študenta priamo na backende
-    for s in rows:
-        # Výpočet na základe dĺžky mena (musí sedieť s frontendom)
-        seed = len(s["name"]) + (len(s["surname"]) if s["surname"] else 0)
-        s["age"] = 19 + (seed % 9)
-
     # Vlastný sorting na základe požiadavky z frontendu (Splnenie bonusu za 3 body)
     if sort_by == "name_asc":
         rows = bubble_sort(rows, key="name", reverse=False)
