@@ -4,3 +4,4 @@ openai
 gunicorn
 groq
 python-dotenv
+psycopg2
