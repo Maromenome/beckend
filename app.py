@@ -120,9 +120,7 @@ for s in students
 seed_data()
 
 
-# ====================================================================
-# 📈 VLASTNÝ BUBBLE SORT ALGORITMUS (Splnenie úlohy za 2 body)
-# ====================================================================
+
 def bubble_sort(data, key, reverse=False):
 n = len(data)
 for i in range(n):
